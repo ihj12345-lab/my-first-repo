@@ -1,0 +1,249 @@
+from fastapi import FastAPI, Form
+from fastapi.responses import HTMLResponse, RedirectResponse
+import yfinance as yf
+from datetime import datetime, timedelta
+import json
+import os
+
+app = FastAPI()
+
+CUSTOM_FILE = os.path.join(os.path.dirname(__file__), "custom_stocks.json")
+
+def load_custom():
+    if os.path.exists(CUSTOM_FILE):
+        with open(CUSTOM_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def save_custom(data: dict):
+    with open(CUSTOM_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+@app.post("/stocks/add")
+def add_stock(name: str = Form(...), symbol: str = Form(...)):
+    custom = load_custom()
+    custom[name.strip()] = symbol.strip().upper()
+    save_custom(custom)
+    return RedirectResponse("/", status_code=303)
+
+@app.post("/stocks/remove")
+def remove_stock(name: str = Form(...)):
+    custom = load_custom()
+    custom.pop(name, None)
+    save_custom(custom)
+    return RedirectResponse("/", status_code=303)
+
+INDICES = {
+    "S&P 500": "^GSPC",
+    "나스닥": "^IXIC",
+    "다우존스": "^DJI",
+}
+
+COMMODITIES = {
+    "달러/원 환율": "KRW=X",
+    "WTI 유가": "CL=F",
+    "금": "GC=F",
+}
+
+KR_STOCKS = {
+    "삼성전자": "005930.KS",
+    "SK하이닉스": "000660.KS",
+    "LG에너지솔루션": "373220.KS",
+    "현대차": "005380.KS",
+    "카카오": "035720.KS",
+    "NAVER": "035420.KS",
+    "셀트리온": "068270.KS",
+    "기아": "000270.KS",
+}
+
+def ai_summary(indices, commodities, kr_stocks):
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return _rule_based_summary(indices, commodities, kr_stocks)
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        lines = []
+        for name, d in indices.items():
+            if isinstance(d["price"], (int, float)):
+                lines.append(f"{name}: {d['price']:,.2f} ({d['pct']:+.2f}%)")
+        for name, d in commodities.items():
+            if isinstance(d["price"], (int, float)):
+                lines.append(f"{name}: {d['price']:,.2f} ({d['pct']:+.2f}%)")
+        kr_up = [n for n, d in kr_stocks.items() if isinstance(d["pct"], (int, float)) and d["pct"] > 0]
+        kr_dn = [n for n, d in kr_stocks.items() if isinstance(d["pct"], (int, float)) and d["pct"] < 0]
+        lines.append(f"한국 종목 상승: {len(kr_up)}개, 하락: {len(kr_dn)}개")
+        data_str = "\n".join(lines)
+        msg = client.messages.create(
+            model="claude-opus-4-8",
+            max_tokens=200,
+            thinking={"type": "adaptive"},
+            messages=[{
+                "role": "user",
+                "content": f"아래는 오늘 주요 시장 데이터입니다. 이를 바탕으로 오늘 시장 상황을 한국어로 한 문장(50자 이내)으로 핵심만 요약해주세요. 설명 없이 요약 문장만 출력하세요.\n\n{data_str}"
+            }]
+        )
+        for block in msg.content:
+            if block.type == "text":
+                return block.text.strip()
+    except Exception:
+        pass
+    return _rule_based_summary(indices, commodities, kr_stocks)
+
+def _rule_based_summary(indices, commodities, kr_stocks):
+    sp = indices.get("S&P 500", {})
+    nasdaq = indices.get("나스닥", {})
+    krw = commodities.get("달러/원 환율", {})
+    sp_pct = sp.get("pct", 0) if isinstance(sp.get("pct"), (int, float)) else 0
+    nasdaq_pct = nasdaq.get("pct", 0) if isinstance(nasdaq.get("pct"), (int, float)) else 0
+    krw_pct = krw.get("pct", 0) if isinstance(krw.get("pct"), (int, float)) else 0
+    avg = (sp_pct + nasdaq_pct) / 2
+    trend = "상승" if avg > 0 else "하락" if avg < 0 else "보합"
+    krw_trend = "강세" if krw_pct > 0 else "약세" if krw_pct < 0 else "보합"
+    return f"미국 증시 {trend} ({avg:+.2f}%), 달러/원 {krw_trend} ({krw_pct:+.2f}%)"
+
+def fetch(ticker_map):
+    results = {}
+    for name, symbol in ticker_map.items():
+        try:
+            t = yf.Ticker(symbol)
+            hist = t.history(period="5d")
+            closes = [round(float(v), 4) for v in hist["Close"].tolist()]
+            if len(hist) >= 2:
+                prev = hist["Close"].iloc[-2]
+                last = hist["Close"].iloc[-1]
+                change = last - prev
+                pct = (change / prev) * 100
+                results[name] = {
+                    "price": round(last, 2),
+                    "change": round(change, 2),
+                    "pct": round(pct, 2),
+                    "closes": closes,
+                }
+            elif len(hist) == 1:
+                last = hist["Close"].iloc[-1]
+                results[name] = {"price": round(last, 2), "change": 0, "pct": 0, "closes": closes}
+        except Exception:
+            results[name] = {"price": "-", "change": 0, "pct": 0, "closes": []}
+    return results
+
+@app.get("/", response_class=HTMLResponse)
+def index():
+    indices = fetch(INDICES)
+    commodities = fetch(COMMODITIES)
+    kr_stocks = fetch(KR_STOCKS)
+    custom = load_custom()
+    custom_data = fetch(custom) if custom else {}
+    summary = ai_summary(indices, commodities, kr_stocks)
+    updated = datetime.now().strftime("%Y-%m-%d %H:%M")
+    return render(indices, commodities, kr_stocks, updated, summary, custom_data)
+
+def color(pct):
+    if isinstance(pct, str):
+        return "#888"
+    return "#ef4444" if pct < 0 else "#22c55e" if pct > 0 else "#888"
+
+def arrow(pct):
+    if isinstance(pct, str):
+        return ""
+    return "▼" if pct < 0 else "▲" if pct > 0 else "─"
+
+def fmt_price(name, price):
+    if name == "달러/원 환율":
+        return f"{price:,.1f} 원"
+    if name == "WTI 유가":
+        return f"${price:,.2f}"
+    if name == "금":
+        return f"${price:,.2f}"
+    return f"{price:,.2f}"
+
+def sparkline(closes, line_color):
+    if len(closes) < 2:
+        return ""
+    w, h = 120, 36
+    mn, mx = min(closes), max(closes)
+    rng = mx - mn if mx != mn else 1
+    pts = []
+    for i, v in enumerate(closes):
+        x = round(i / (len(closes) - 1) * w, 1)
+        y = round(h - (v - mn) / rng * h, 1)
+        pts.append(f"{x},{y}")
+    poly = " ".join(pts)
+    return f'<svg width="{w}" height="{h}" viewBox="0 0 {w} {h}" style="display:block;margin-top:10px"><polyline points="{poly}" fill="none" stroke="{line_color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>'
+
+def card(name, data, removable=False):
+    p = data["price"]
+    pct = data["pct"]
+    chg = data["change"]
+    c = color(pct)
+    a = arrow(pct)
+    price_str = fmt_price(name, p) if isinstance(p, (int, float)) else "-"
+    remove_btn = f'<form method="post" action="/stocks/remove" style="display:inline"><input type="hidden" name="name" value="{name}"><button class="rm-btn" type="submit">✕</button></form>' if removable else ""
+    chart = sparkline(data.get("closes", []), c)
+    return f"""
+    <div class="card">
+        <div class="card-header"><div class="card-name">{name}</div>{remove_btn}</div>
+        <div class="card-price">{price_str}</div>
+        <div class="card-change" style="color:{c}">{a} {abs(chg):,.2f} ({abs(pct):.2f}%)</div>
+        {chart}
+    </div>"""
+
+def section(title, data, removable=False):
+    cards = "".join(card(n, d, removable) for n, d in data.items())
+    return f'<div class="section"><h2>{title}</h2><div class="grid">{cards}</div></div>'
+
+def render(indices, commodities, kr_stocks, updated, summary="", custom_data=None):
+    s1 = section("🇺🇸 미국 주요 지수", indices)
+    s2 = section("📊 주요 경제지표", commodities)
+    s3 = section("🇰🇷 한국 대표 종목", kr_stocks)
+    s4 = section("⭐ 내 종목", custom_data, removable=True) if custom_data else ""
+    return f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>증시 대시보드</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ background: #0f172a; color: #f1f5f9; font-family: 'Segoe UI', sans-serif; padding: 24px; }}
+  h1 {{ font-size: 1.6rem; margin-bottom: 4px; }}
+  .subtitle {{ color: #94a3b8; font-size: 0.85rem; margin-bottom: 32px; }}
+  .section {{ margin-bottom: 36px; }}
+  .section h2 {{ font-size: 1.1rem; color: #94a3b8; margin-bottom: 14px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }}
+  .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }}
+  .card {{ background: #1e293b; border-radius: 12px; padding: 18px; }}
+  .card-price {{ font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }}
+  .card-change {{ font-size: 0.88rem; font-weight: 500; }}
+  .ai-summary {{ background: #1e3a5f; border: 1px solid #2d6a9f; border-radius: 10px; padding: 14px 18px; margin-bottom: 28px; font-size: 0.95rem; color: #93c5fd; display: flex; align-items: center; gap: 10px; }}
+  .ai-summary .ai-icon {{ font-size: 1.1rem; flex-shrink: 0; }}
+  .card-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }}
+  .card-name {{ font-size: 0.82rem; color: #94a3b8; }}
+  .rm-btn {{ background: none; border: none; color: #64748b; cursor: pointer; font-size: 0.75rem; padding: 0; line-height: 1; }}
+  .rm-btn:hover {{ color: #ef4444; }}
+  .add-form {{ background: #1e293b; border-radius: 12px; padding: 16px 18px; margin-bottom: 36px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }}
+  .add-form input {{ background: #0f172a; border: 1px solid #334155; color: #f1f5f9; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; width: 160px; }}
+  .add-form input::placeholder {{ color: #475569; }}
+  .add-form button {{ background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 8px 16px; font-size: 0.85rem; cursor: pointer; }}
+  .add-form button:hover {{ background: #2563eb; }}
+  .refresh {{ margin-top: 32px; text-align: center; }}
+  .refresh a {{ color: #3b82f6; text-decoration: none; font-size: 0.9rem; }}
+  .refresh a:hover {{ text-decoration: underline; }}
+</style>
+</head>
+<body>
+<h1>📈 증시 대시보드</h1>
+<div class="subtitle">전일 종가 기준 · 마지막 업데이트: {updated}</div>
+<div class="ai-summary"><span class="ai-icon">🤖</span><span>{summary}</span></div>
+{s1}{s2}{s3}
+<div class="section">
+<h2>⭐ 내 종목 추가</h2>
+<form class="add-form" method="post" action="/stocks/add">
+  <input name="name" placeholder="종목 이름 (예: 애플)" required>
+  <input name="symbol" placeholder="티커 (예: AAPL)" required>
+  <button type="submit">+ 추가</button>
+</form>
+</div>
+{s4}
+<div class="refresh"><a href="/">🔄 새로고침</a></div>
+</body>
+</html>"""
