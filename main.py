@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 import yfinance as yf
+from pykrx import stock as krx
 from datetime import datetime, timedelta
 import json
 import os
@@ -46,14 +47,14 @@ COMMODITIES = {
 }
 
 KR_STOCKS = {
-    "삼성전자": "005930.KS",
-    "SK하이닉스": "000660.KS",
-    "LG에너지솔루션": "373220.KS",
-    "현대차": "005380.KS",
-    "카카오": "035720.KS",
-    "NAVER": "035420.KS",
-    "셀트리온": "068270.KS",
-    "기아": "000270.KS",
+    "삼성전자": "005930",
+    "SK하이닉스": "000660",
+    "LG에너지솔루션": "373220",
+    "현대차": "005380",
+    "카카오": "035720",
+    "NAVER": "035420",
+    "셀트리온": "068270",
+    "기아": "000270",
 }
 
 def ai_summary(indices, commodities, kr_stocks):
@@ -102,6 +103,35 @@ def _rule_based_summary(indices, commodities, kr_stocks):
     krw_trend = "강세" if krw_pct > 0 else "약세" if krw_pct < 0 else "보합"
     return f"미국 증시 {trend} ({avg:+.2f}%), 달러/원 {krw_trend} ({krw_pct:+.2f}%)"
 
+def fetch_kr(ticker_map):
+    results = {}
+    today = datetime.now().strftime("%Y%m%d")
+    start = (datetime.now() - timedelta(days=10)).strftime("%Y%m%d")
+    for name, code in ticker_map.items():
+        try:
+            df = krx.get_market_ohlcv(start, today, code)
+            df = df.dropna()
+            if len(df) >= 2:
+                closes = [round(float(v), 0) for v in df["종가"].tolist()]
+                prev = df["종가"].iloc[-2]
+                last = df["종가"].iloc[-1]
+                change = last - prev
+                pct = (change / prev) * 100
+                results[name] = {
+                    "price": round(last, 0),
+                    "change": round(change, 0),
+                    "pct": round(pct, 2),
+                    "closes": closes,
+                    "post_price": None,
+                    "post_pct": None,
+                }
+            elif len(df) == 1:
+                last = df["종가"].iloc[-1]
+                results[name] = {"price": round(last, 0), "change": 0, "pct": 0, "closes": [float(last)], "post_price": None, "post_pct": None}
+        except Exception:
+            results[name] = {"price": "-", "change": 0, "pct": 0, "closes": [], "post_price": None, "post_pct": None}
+    return results
+
 def fetch(ticker_map):
     results = {}
     for name, symbol in ticker_map.items():
@@ -144,7 +174,7 @@ def fetch(ticker_map):
 def index():
     indices = fetch(INDICES)
     commodities = fetch(COMMODITIES)
-    kr_stocks = fetch(KR_STOCKS)
+    kr_stocks = fetch_kr(KR_STOCKS)
     custom = load_custom()
     custom_data = fetch(custom) if custom else {}
     summary = ai_summary(indices, commodities, kr_stocks)
@@ -161,6 +191,8 @@ def arrow(pct):
         return ""
     return "▼" if pct < 0 else "▲" if pct > 0 else "─"
 
+KR_CODES = set(KR_STOCKS.keys())
+
 def fmt_price(name, price):
     if name == "달러/원 환율":
         return f"{price:,.1f} 원"
@@ -168,6 +200,8 @@ def fmt_price(name, price):
         return f"${price:,.2f}"
     if name == "금":
         return f"${price:,.2f}"
+    if name in KR_CODES:
+        return f"{int(price):,} 원"
     return f"{price:,.2f}"
 
 def sparkline(closes, line_color):
