@@ -187,6 +187,9 @@ def index():
     semis = fetch(SEMIS)
     kr_stocks = fetch_kr(KR_STOCKS)
     other = fetch_mixed(OTHER)
+    krw_rate = commodities.get("달러/원 환율", {}).get("price")
+    if "이더리움" in other and isinstance(other["이더리움"]["price"], (int, float)) and isinstance(krw_rate, (int, float)):
+        other["이더리움"]["krw_price"] = round(other["이더리움"]["price"] * krw_rate, 0)
     custom = load_custom()
     custom_data = fetch(custom) if custom else {}
     summary = ai_summary(indices, commodities, kr_stocks)
@@ -239,6 +242,8 @@ def card(name, data, removable=False):
     price_str = fmt_price(name, p) if isinstance(p, (int, float)) else "-"
     remove_btn = f'<form method="post" action="/stocks/remove" style="display:inline"><input type="hidden" name="name" value="{name}"><button class="rm-btn" type="submit">✕</button></form>' if removable else ""
     chart = sparkline(data.get("closes", []), c)
+    krw_price = data.get("krw_price")
+    krw_html = f'<div class="card-after">≈ {int(krw_price):,} 원</div>' if krw_price else ""
     post_html = ""
     post_price = data.get("post_price")
     post_pct = data.get("post_pct")
@@ -251,7 +256,7 @@ def card(name, data, removable=False):
         <div class="card-header"><div class="card-name">{name}</div>{remove_btn}</div>
         <div class="card-price">{price_str}</div>
         <div class="card-change" style="color:{c}">{a} {abs(chg):,.2f} ({abs(pct):.2f}%)</div>
-        {post_html}
+        {krw_html}{post_html}
         {chart}
     </div>"""
 
