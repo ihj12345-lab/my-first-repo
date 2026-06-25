@@ -122,7 +122,7 @@ def ai_analysis(indices, commodities, kr_stocks):
 {f"[최신 뉴스]{chr(10)}{news_str}" if news_str else ""}"""
 
         resp = _httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}",
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
             json={"contents": [{"parts": [{"text": prompt}]}]},
             timeout=15,
         )
