@@ -114,17 +114,30 @@ def fetch(ticker_map):
                 last = hist["Close"].iloc[-1]
                 change = last - prev
                 pct = (change / prev) * 100
-                results[name] = {
+                data = {
                     "price": round(last, 2),
                     "change": round(change, 2),
                     "pct": round(pct, 2),
                     "closes": closes,
+                    "post_price": None,
+                    "post_pct": None,
                 }
+                try:
+                    info = t.info
+                    market_state = info.get("marketState", "")
+                    post_price = info.get("postMarketPrice")
+                    post_pct = info.get("postMarketChangePercent")
+                    if post_price and market_state in ("POST", "PREPRE", "PRE"):
+                        data["post_price"] = round(post_price, 2)
+                        data["post_pct"] = round(post_pct, 2) if post_pct else None
+                except Exception:
+                    pass
+                results[name] = data
             elif len(hist) == 1:
                 last = hist["Close"].iloc[-1]
-                results[name] = {"price": round(last, 2), "change": 0, "pct": 0, "closes": closes}
+                results[name] = {"price": round(last, 2), "change": 0, "pct": 0, "closes": closes, "post_price": None, "post_pct": None}
         except Exception:
-            results[name] = {"price": "-", "change": 0, "pct": 0, "closes": []}
+            results[name] = {"price": "-", "change": 0, "pct": 0, "closes": [], "post_price": None, "post_pct": None}
     return results
 
 @app.get("/", response_class=HTMLResponse)
@@ -180,11 +193,19 @@ def card(name, data, removable=False):
     price_str = fmt_price(name, p) if isinstance(p, (int, float)) else "-"
     remove_btn = f'<form method="post" action="/stocks/remove" style="display:inline"><input type="hidden" name="name" value="{name}"><button class="rm-btn" type="submit">✕</button></form>' if removable else ""
     chart = sparkline(data.get("closes", []), c)
+    post_html = ""
+    post_price = data.get("post_price")
+    post_pct = data.get("post_pct")
+    if post_price:
+        pc = "#22c55e" if post_pct and post_pct > 0 else "#ef4444" if post_pct and post_pct < 0 else "#888"
+        pa = "▲" if post_pct and post_pct > 0 else "▼" if post_pct and post_pct < 0 else "─"
+        post_html = f'<div class="card-after">시간외 {post_price:,.2f} <span style="color:{pc}">{pa}{abs(post_pct):.2f}%</span></div>'
     return f"""
     <div class="card">
         <div class="card-header"><div class="card-name">{name}</div>{remove_btn}</div>
         <div class="card-price">{price_str}</div>
         <div class="card-change" style="color:{c}">{a} {abs(chg):,.2f} ({abs(pct):.2f}%)</div>
+        {post_html}
         {chart}
     </div>"""
 
@@ -214,6 +235,7 @@ def render(indices, commodities, kr_stocks, updated, summary="", custom_data=Non
   .card {{ background: #1e293b; border-radius: 12px; padding: 18px; }}
   .card-price {{ font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }}
   .card-change {{ font-size: 0.88rem; font-weight: 500; }}
+  .card-after {{ font-size: 0.78rem; color: #94a3b8; margin-top: 4px; }}
   .ai-summary {{ background: #1e3a5f; border: 1px solid #2d6a9f; border-radius: 10px; padding: 14px 18px; margin-bottom: 28px; font-size: 0.95rem; color: #93c5fd; display: flex; align-items: center; gap: 10px; }}
   .ai-summary .ai-icon {{ font-size: 1.1rem; flex-shrink: 0; }}
   .card-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }}
