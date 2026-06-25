@@ -61,6 +61,21 @@ KR_STOCKS = {
 
 DEFAULT_CUSTOM = {}
 
+OTHER = {
+    "롯데칠성": "005300",
+    "이더리움": "ETH-USD",
+}
+
+def fetch_mixed(ticker_map):
+    kr_map = {n: s for n, s in ticker_map.items() if s.isdigit()}
+    us_map = {n: s for n, s in ticker_map.items() if not s.isdigit()}
+    results = {}
+    if kr_map:
+        results.update(fetch_kr(kr_map))
+    if us_map:
+        results.update(fetch(us_map))
+    return {n: results[n] for n in ticker_map if n in results}
+
 def ai_summary(indices, commodities, kr_stocks):
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -170,11 +185,12 @@ def index():
     commodities = fetch(COMMODITIES)
     semis = fetch(SEMIS)
     kr_stocks = fetch_kr(KR_STOCKS)
+    other = fetch_mixed(OTHER)
     custom = load_custom()
     custom_data = fetch(custom) if custom else {}
     summary = ai_summary(indices, commodities, kr_stocks)
     updated = datetime.now().strftime("%Y-%m-%d %H:%M")
-    return render(indices, commodities, semis, kr_stocks, updated, summary, custom_data)
+    return render(indices, commodities, semis, kr_stocks, other, updated, summary, custom_data)
 
 def color(pct):
     if isinstance(pct, str):
@@ -186,7 +202,7 @@ def arrow(pct):
         return ""
     return "▼" if pct < 0 else "▲" if pct > 0 else "─"
 
-KR_CODES = set(KR_STOCKS.keys())
+KR_CODES = set(KR_STOCKS.keys()) | {n for n, s in OTHER.items() if s.isdigit()}
 
 def fmt_price(name, price):
     if name == "달러/원 환율":
@@ -242,11 +258,12 @@ def section(title, data, removable=False):
     cards = "".join(card(n, d, removable) for n, d in data.items())
     return f'<div class="section"><h2>{title}</h2><div class="grid">{cards}</div></div>'
 
-def render(indices, commodities, semis, kr_stocks, updated, summary="", custom_data=None):
+def render(indices, commodities, semis, kr_stocks, other, updated, summary="", custom_data=None):
     s1 = section("🇺🇸 미국 주요 지수", indices)
     s2 = section("📊 주요 경제지표", commodities)
     s_semi = section("💾 미국 반도체 주요 종목", semis)
     s3 = section("🇰🇷 한국 대표 종목", kr_stocks)
+    s_other = section("🌐 기타 주요 종목", other)
     s4 = section("⭐ 내 종목", custom_data, removable=True) if custom_data else ""
     return f"""<!DOCTYPE html>
 <html lang="ko">
@@ -288,7 +305,7 @@ def render(indices, commodities, semis, kr_stocks, updated, summary="", custom_d
 <h1>📈 증시 대시보드</h1>
 <div class="subtitle">전일 종가 기준 · 마지막 업데이트: {updated}</div>
 <div class="ai-summary"><span class="ai-icon">🤖</span><span>{summary}</span></div>
-<div class="row-wrap">{s1}{s2}</div>{s_semi}{s3}
+<div class="row-wrap">{s1}{s2}</div>{s_semi}{s3}{s_other}
 <div class="section">
 <h2>⭐ 내 종목 추가</h2>
 <form class="add-form" method="post" action="/stocks/add">
