@@ -127,7 +127,7 @@ def ai_analysis(indices, commodities, kr_stocks):
 
         msg = client.messages.create(
             model="claude-opus-4-8",
-            max_tokens=600,
+            max_tokens=2000,
             thinking={"type": "adaptive"},
             messages=[{
                 "role": "user",
@@ -153,14 +153,18 @@ def ai_analysis(indices, commodities, kr_stocks):
         for block in msg.content:
             if block.type == "text":
                 text = block.text.strip()
-                start = text.find("{")
-                end = text.rfind("}") + 1
-                data = _json.loads(text[start:end])
-                return (
-                    data.get("market_summary", fallback_summary),
-                    data.get("kr_forecast", fallback_forecast),
-                    data.get("comments", fallback_comments),
-                )
+                try:
+                    start = text.find("{")
+                    end = text.rfind("}") + 1
+                    data = _json.loads(text[start:end])
+                    return (
+                        data.get("market_summary", fallback_summary),
+                        data.get("kr_forecast", fallback_forecast),
+                        data.get("comments", fallback_comments),
+                    )
+                except Exception:
+                    # JSON 파싱 실패시 텍스트를 summary로 사용
+                    return text[:80], fallback_forecast, fallback_comments
     except Exception:
         pass
     return fallback_summary, fallback_forecast, fallback_comments
