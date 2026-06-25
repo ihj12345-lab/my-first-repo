@@ -77,12 +77,16 @@ def fetch_mixed(ticker_map):
         results.update(fetch(us_map))
     return {n: results[n] for n in ticker_map if n in results}
 
-def ai_summary(indices, commodities, kr_stocks):
+def ai_analysis(indices, commodities, kr_stocks):
+    """Returns (market_summary, kr_forecast, stock_comments_dict)"""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
+    fallback_summary = _rule_based_summary(indices, commodities, kr_stocks)
+    fallback_forecast = "삼성전자·SK하이닉스·현대차 내일 전망을 분석 중입니다."
+    fallback_comments = {}
     if not api_key:
-        return _rule_based_summary(indices, commodities, kr_stocks)
+        return fallback_summary, fallback_forecast, fallback_comments
     try:
-        import anthropic
+        import anthropic, json as _json
         client = anthropic.Anthropic(api_key=api_key)
         lines = []
         for name, d in indices.items():
@@ -91,25 +95,46 @@ def ai_summary(indices, commodities, kr_stocks):
         for name, d in commodities.items():
             if isinstance(d["price"], (int, float)):
                 lines.append(f"{name}: {d['price']:,.2f} ({d['pct']:+.2f}%)")
-        kr_up = [n for n, d in kr_stocks.items() if isinstance(d["pct"], (int, float)) and d["pct"] > 0]
-        kr_dn = [n for n, d in kr_stocks.items() if isinstance(d["pct"], (int, float)) and d["pct"] < 0]
-        lines.append(f"한국 종목 상승: {len(kr_up)}개, 하락: {len(kr_dn)}개")
+        for name, d in kr_stocks.items():
+            if isinstance(d["price"], (int, float)):
+                lines.append(f"{name}: {int(d['price']):,}원 ({d['pct']:+.2f}%)")
         data_str = "\n".join(lines)
         msg = client.messages.create(
             model="claude-opus-4-8",
-            max_tokens=200,
+            max_tokens=600,
             thinking={"type": "adaptive"},
             messages=[{
                 "role": "user",
-                "content": f"아래는 오늘 주요 시장 데이터입니다. 이를 바탕으로 오늘 시장 상황을 한국어로 한 문장(50자 이내)으로 핵심만 요약해주세요. 설명 없이 요약 문장만 출력하세요.\n\n{data_str}"
+                "content": f"""아래 시장 데이터를 보고 JSON 형식으로만 답하세요. 설명 없이 JSON만 출력하세요.
+
+{{
+  "market_summary": "오늘 시장 상황 한 문장 요약 (50자 이내)",
+  "kr_forecast": "삼성전자·SK하이닉스·현대차 내일 투자 전망 한 문장 (60자 이내)",
+  "comments": {{
+    "삼성전자": "한 줄 코멘트 (30자 이내)",
+    "SK하이닉스": "한 줄 코멘트 (30자 이내)",
+    "현대차": "한 줄 코멘트 (30자 이내)"
+  }}
+}}
+
+데이터:
+{data_str}"""
             }]
         )
         for block in msg.content:
             if block.type == "text":
-                return block.text.strip()
+                text = block.text.strip()
+                start = text.find("{")
+                end = text.rfind("}") + 1
+                data = _json.loads(text[start:end])
+                return (
+                    data.get("market_summary", fallback_summary),
+                    data.get("kr_forecast", fallback_forecast),
+                    data.get("comments", fallback_comments),
+                )
     except Exception:
         pass
-    return _rule_based_summary(indices, commodities, kr_stocks)
+    return fallback_summary, fallback_forecast, fallback_comments
 
 def _rule_based_summary(indices, commodities, kr_stocks):
     sp = indices.get("S&P 500", {})
@@ -192,9 +217,11 @@ def index():
         other["이더리움"]["krw_price"] = round(other["이더리움"]["price"] * krw_rate, 0)
     custom = load_custom()
     custom_data = fetch(custom) if custom else {}
-    summary = ai_summary(indices, commodities, kr_stocks)
+    summary, kr_forecast, stock_comments = ai_analysis(indices, commodities, kr_stocks)
+    for name in kr_stocks:
+        kr_stocks[name]["comment"] = stock_comments.get(name, "")
     updated = datetime.now().strftime("%Y-%m-%d %H:%M")
-    return render(indices, commodities, semis, kr_stocks, other, updated, summary, custom_data)
+    return render(indices, commodities, semis, kr_stocks, other, updated, summary, kr_forecast, custom_data)
 
 def color(pct):
     if isinstance(pct, str):
@@ -242,6 +269,8 @@ def card(name, data, removable=False):
     price_str = fmt_price(name, p) if isinstance(p, (int, float)) else "-"
     remove_btn = f'<form method="post" action="/stocks/remove" style="display:inline"><input type="hidden" name="name" value="{name}"><button class="rm-btn" type="submit">✕</button></form>' if removable else ""
     chart = sparkline(data.get("closes", []), c)
+    comment = data.get("comment", "")
+    comment_html = f'<div class="card-comment">💬 {comment}</div>' if comment else ""
     krw_price = data.get("krw_price")
     krw_html = f'<div class="card-after">≈ {int(krw_price):,} 원</div>' if krw_price else ""
     post_html = ""
@@ -258,13 +287,14 @@ def card(name, data, removable=False):
         <div class="card-change" style="color:{c}">{a} {abs(chg):,.2f} ({abs(pct):.2f}%)</div>
         {krw_html}{post_html}
         {chart}
+        {comment_html}
     </div>"""
 
 def section(title, data, removable=False):
     cards = "".join(card(n, d, removable) for n, d in data.items())
     return f'<div class="section"><h2>{title}</h2><div class="grid">{cards}</div></div>'
 
-def render(indices, commodities, semis, kr_stocks, other, updated, summary="", custom_data=None):
+def render(indices, commodities, semis, kr_stocks, other, updated, summary="", kr_forecast="", custom_data=None):
     s1 = section("🇺🇸 미국 주요 지수", indices)
     s2 = section("📊 주요 경제지표", commodities)
     s_semi = section("💾 미국 반도체 주요 종목", semis)
@@ -285,12 +315,15 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", c
   .section {{ margin-bottom: 36px; }}
   .section h2 {{ font-size: 1.1rem; color: #94a3b8; margin-bottom: 14px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }}
   .grid {{ display: flex; flex-wrap: wrap; gap: 14px; }}
-  .card {{ background: #1e293b; border-radius: 12px; padding: 18px; width: 210px; height: 160px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; flex-shrink: 0; }}
+  .card {{ background: #1e293b; border-radius: 12px; padding: 18px; width: 210px; min-height: 160px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; flex-shrink: 0; }}
   .card-price {{ font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }}
   .card-change {{ font-size: 0.88rem; font-weight: 500; }}
   .card-after {{ font-size: 0.78rem; color: #94a3b8; margin-top: 4px; }}
-  .ai-summary {{ background: #1e3a5f; border: 1px solid #2d6a9f; border-radius: 10px; padding: 14px 18px; margin-bottom: 28px; font-size: 0.95rem; color: #93c5fd; display: flex; align-items: center; gap: 10px; }}
-  .ai-summary .ai-icon {{ font-size: 1.1rem; flex-shrink: 0; }}
+  .ai-summary {{ background: #1e3a5f; border: 1px solid #2d6a9f; border-radius: 10px; padding: 16px 20px; margin-bottom: 10px; font-size: 1.05rem; font-weight: 500; color: #bfdbfe; display: flex; align-items: center; gap: 12px; line-height: 1.5; }}
+  .ai-summary .ai-icon {{ font-size: 1.3rem; flex-shrink: 0; }}
+  .ai-forecast {{ background: #1a2e1a; border: 1px solid #2d6a3a; border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; font-size: 1.05rem; font-weight: 500; color: #86efac; display: flex; align-items: center; gap: 12px; line-height: 1.5; }}
+  .ai-forecast .ai-icon {{ font-size: 1.3rem; flex-shrink: 0; }}
+  .card-comment {{ font-size: 0.75rem; color: #94a3b8; margin-top: 6px; line-height: 1.4; }}
   .card-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }}
   .card-name {{ font-size: 1rem; font-weight: 600; color: #e2e8f0; }}
   .rm-btn {{ background: none; border: none; color: #64748b; cursor: pointer; font-size: 0.75rem; padding: 0; line-height: 1; }}
@@ -311,6 +344,7 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", c
 <h1>📈 증시 대시보드</h1>
 <div class="subtitle">전일 종가 기준 · 마지막 업데이트: {updated}</div>
 <div class="ai-summary"><span class="ai-icon">🤖</span><span>{summary}</span></div>
+<div class="ai-forecast"><span class="ai-icon">📈</span><span>{kr_forecast}</span></div>
 <div class="row-wrap">{s1}{s2}</div>{s_semi}<div class="row-wrap">{s3}{s_other}</div>
 <div class="section">
 <h2>⭐ 내 종목 추가</h2>
