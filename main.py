@@ -304,7 +304,7 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", c
   .refresh a {{ color: #3b82f6; text-decoration: none; font-size: 0.9rem; }}
   .refresh a:hover {{ text-decoration: underline; }}
   .row-wrap {{ display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }}
-  .row-wrap .section {{ flex: 1; min-width: 280px; margin-bottom: 36px; }}
+  .row-wrap .section {{ flex: none; margin-bottom: 36px; }}
 </style>
 </head>
 <body>
