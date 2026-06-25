@@ -372,7 +372,7 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", k
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MarketPulse · 증시 대시보드</title>
+<title>StockScope · 증시 대시보드</title>
 <style>
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{ background: #0f172a; color: #f1f5f9; font-family: 'Segoe UI', sans-serif; padding: 24px; }}
@@ -413,7 +413,7 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", k
 </style>
 </head>
 <body>
-<h1>📈 MarketPulse <span class="brand-sub">증시 대시보드</span></h1>
+<h1>🔭 StockScope <span class="brand-sub">증시 관측 대시보드</span></h1>
 <div class="subtitle"><span class="sub-badge">전일 종가 기준</span> <span class="sub-time">🕐 마지막 업데이트 {updated}</span></div>
 <div class="ai-summary"><span class="ai-icon">📊</span><span><b class="ai-label">[AI 오늘 분석]</b> {summary}</span></div>
 {"" if not kr_forecast else f'<div class="ai-forecast"><span class="ai-icon">📈</span><span><b class="ai-label">[AI 내일 전망]</b> {kr_forecast}</span></div>'}
