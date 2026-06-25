@@ -355,7 +355,7 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", k
   .ai-summary {{ background: #1e3a5f; border: 1px solid #2d6a9f; border-radius: 10px; padding: 16px 20px; margin-bottom: 10px; font-size: 1.05rem; font-weight: 500; color: #bfdbfe; display: flex; align-items: center; gap: 12px; line-height: 1.5; }}
   .ai-summary .ai-icon {{ font-size: 1.3rem; flex-shrink: 0; }}
   .ai-forecast {{ background: #1a2e1a; border: 1px solid #2d6a3a; border-radius: 10px; padding: 16px 20px; margin-bottom: 8px; font-size: 1.05rem; font-weight: 500; color: #86efac; display: flex; align-items: center; gap: 12px; line-height: 1.5; }}
-  .ai-disclaimer {{ font-size: 0.75rem; color: #64748b; margin-bottom: 28px; padding-left: 4px; }}
+  .ai-disclaimer {{ font-size: 0.85rem; font-weight: 500; color: #fbbf24; background: #2d2410; border: 1px solid #5c4a16; border-radius: 8px; padding: 10px 16px; margin-bottom: 28px; display: flex; align-items: center; gap: 8px; }}
   .ai-forecast .ai-icon {{ font-size: 1.3rem; flex-shrink: 0; }}
   .card-comment {{ font-size: 0.82rem; color: #cbd5e1; margin-top: 10px; padding-top: 10px; border-top: 1px solid #334155; line-height: 1.5; }}
   .ai-label {{ font-weight: 700; margin-right: 4px; opacity: 0.85; }}
