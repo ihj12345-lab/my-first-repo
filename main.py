@@ -79,7 +79,7 @@ def fetch_mixed(ticker_map):
 
 def ai_analysis(indices, commodities, kr_stocks):
     """Returns (market_summary, kr_forecast, stock_comments_dict)"""
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GROQ_API_KEY")
     fallback_summary = _rule_based_summary(indices, commodities, kr_stocks)
     fallback_forecast = ""
     fallback_comments = {}
@@ -122,11 +122,17 @@ def ai_analysis(indices, commodities, kr_stocks):
 {f"[최신 뉴스]{chr(10)}{news_str}" if news_str else ""}"""
 
         resp = _httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
-            json={"contents": [{"parts": [{"text": prompt}]}]},
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 500,
+                "temperature": 0.3,
+            },
             timeout=15,
         )
-        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        text = resp.json()["choices"][0]["message"]["content"].strip()
         start = text.find("{")
         end = text.rfind("}") + 1
         data = _json.loads(text[start:end])
