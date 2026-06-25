@@ -11,10 +11,11 @@ app = FastAPI()
 CUSTOM_FILE = os.path.join(os.path.dirname(__file__), "custom_stocks.json")
 
 def load_custom():
+    base = dict(DEFAULT_CUSTOM)
     if os.path.exists(CUSTOM_FILE):
         with open(CUSTOM_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+            base.update(json.load(f))
+    return base
 
 def save_custom(data: dict):
     with open(CUSTOM_FILE, "w", encoding="utf-8") as f:
@@ -55,6 +56,10 @@ KR_STOCKS = {
     "NAVER": "035420",
     "셀트리온": "068270",
     "기아": "000270",
+}
+
+DEFAULT_CUSTOM = {
+    "마이크론": "MU",
 }
 
 def ai_summary(indices, commodities, kr_stocks):
