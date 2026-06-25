@@ -285,7 +285,7 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", c
   .section {{ margin-bottom: 36px; }}
   .section h2 {{ font-size: 1.1rem; color: #94a3b8; margin-bottom: 14px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }}
   .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }}
-  .card {{ background: #1e293b; border-radius: 12px; padding: 18px; min-height: 130px; display: flex; flex-direction: column; justify-content: space-between; }}
+  .card {{ background: #1e293b; border-radius: 12px; padding: 18px; height: 160px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; }}
   .card-price {{ font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }}
   .card-change {{ font-size: 0.88rem; font-weight: 500; }}
   .card-after {{ font-size: 0.78rem; color: #94a3b8; margin-top: 4px; }}
@@ -311,7 +311,7 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", c
 <h1>📈 증시 대시보드</h1>
 <div class="subtitle">전일 종가 기준 · 마지막 업데이트: {updated}</div>
 <div class="ai-summary"><span class="ai-icon">🤖</span><span>{summary}</span></div>
-<div class="row-wrap">{s1}{s2}</div>{s_semi}{s3}{s_other}
+<div class="row-wrap">{s1}{s2}</div>{s_semi}<div class="row-wrap">{s3}{s_other}</div>
 <div class="section">
 <h2>⭐ 내 종목 추가</h2>
 <form class="add-form" method="post" action="/stocks/add">
