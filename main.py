@@ -285,14 +285,14 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", c
   .section {{ margin-bottom: 36px; }}
   .section h2 {{ font-size: 1.1rem; color: #94a3b8; margin-bottom: 14px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }}
   .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }}
-  .card {{ background: #1e293b; border-radius: 12px; padding: 18px; }}
+  .card {{ background: #1e293b; border-radius: 12px; padding: 18px; min-height: 130px; display: flex; flex-direction: column; justify-content: space-between; }}
   .card-price {{ font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }}
   .card-change {{ font-size: 0.88rem; font-weight: 500; }}
   .card-after {{ font-size: 0.78rem; color: #94a3b8; margin-top: 4px; }}
   .ai-summary {{ background: #1e3a5f; border: 1px solid #2d6a9f; border-radius: 10px; padding: 14px 18px; margin-bottom: 28px; font-size: 0.95rem; color: #93c5fd; display: flex; align-items: center; gap: 10px; }}
   .ai-summary .ai-icon {{ font-size: 1.1rem; flex-shrink: 0; }}
   .card-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }}
-  .card-name {{ font-size: 0.82rem; color: #94a3b8; }}
+  .card-name {{ font-size: 1rem; font-weight: 600; color: #e2e8f0; }}
   .rm-btn {{ background: none; border: none; color: #64748b; cursor: pointer; font-size: 0.75rem; padding: 0; line-height: 1; }}
   .rm-btn:hover {{ color: #ef4444; }}
   .add-form {{ background: #1e293b; border-radius: 12px; padding: 16px 18px; margin-bottom: 36px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }}
