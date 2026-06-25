@@ -350,7 +350,7 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", k
   .ai-summary .ai-icon {{ font-size: 1.3rem; flex-shrink: 0; }}
   .ai-forecast {{ background: #1a2e1a; border: 1px solid #2d6a3a; border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; font-size: 1.05rem; font-weight: 500; color: #86efac; display: flex; align-items: center; gap: 12px; line-height: 1.5; }}
   .ai-forecast .ai-icon {{ font-size: 1.3rem; flex-shrink: 0; }}
-  .card-comment {{ font-size: 0.75rem; color: #94a3b8; margin-top: 6px; line-height: 1.4; }}
+  .card-comment {{ font-size: 0.82rem; color: #cbd5e1; margin-top: 10px; padding-top: 10px; border-top: 1px solid #334155; line-height: 1.5; }}
   .ai-label {{ font-weight: 700; margin-right: 4px; opacity: 0.85; }}
   .card-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }}
   .card-name {{ font-size: 1rem; font-weight: 600; color: #e2e8f0; }}
