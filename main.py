@@ -77,6 +77,68 @@ def fetch_mixed(ticker_map):
         results.update(fetch(us_map))
     return {n: results[n] for n in ticker_map if n in results}
 
+def ai_analysis(indices, commodities, kr_stocks):
+    """Returns (market_summary, kr_forecast, stock_comments_dict)"""
+    api_key = os.environ.get("GEMINI_API_KEY")
+    fallback_summary = _rule_based_summary(indices, commodities, kr_stocks)
+    fallback_forecast = ""
+    fallback_comments = {}
+    if not api_key:
+        return fallback_summary, fallback_forecast, fallback_comments
+    try:
+        import httpx as _httpx, json as _json
+        lines = []
+        for name, d in indices.items():
+            if isinstance(d["price"], (int, float)):
+                lines.append(f"{name}: {d['price']:,.2f} ({d['pct']:+.2f}%)")
+        for name, d in commodities.items():
+            if isinstance(d["price"], (int, float)):
+                lines.append(f"{name}: {d['price']:,.2f} ({d['pct']:+.2f}%)")
+        for name, d in kr_stocks.items():
+            if isinstance(d["price"], (int, float)):
+                lines.append(f"{name}: {int(d['price']):,}원 ({d['pct']:+.2f}%)")
+
+        news_sections = []
+        for stock_name, query in [("삼성전자", "삼성전자 주가"), ("SK하이닉스", "SK하이닉스 주가"), ("현대차", "현대차 주가")]:
+            snippets = fetch_naver_news(query)
+            if snippets:
+                news_sections.append(f"[{stock_name} 최신 뉴스]\n" + "\n".join(snippets))
+        news_str = "\n\n".join(news_sections) if news_sections else ""
+
+        prompt = f"""아래 시장 데이터{"와 최신 뉴스" if news_str else ""}를 보고 JSON 형식으로만 답하세요. 설명 없이 JSON만 출력하세요.
+
+{{
+  "market_summary": "오늘 시장 상황 한 문장 요약 (50자 이내)",
+  "kr_forecast": "삼성전자·SK하이닉스·현대차 내일 투자 전망 한 문장 (60자 이내)",
+  "comments": {{
+    "삼성전자": "한 줄 코멘트 (30자 이내)",
+    "SK하이닉스": "한 줄 코멘트 (30자 이내)",
+    "현대차": "한 줄 코멘트 (30자 이내)"
+  }}
+}}
+
+[시장 데이터]
+{chr(10).join(lines)}
+{f"[최신 뉴스]{chr(10)}{news_str}" if news_str else ""}"""
+
+        resp = _httpx.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}",
+            json={"contents": [{"parts": [{"text": prompt}]}]},
+            timeout=15,
+        )
+        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        start = text.find("{")
+        end = text.rfind("}") + 1
+        data = _json.loads(text[start:end])
+        return (
+            data.get("market_summary", fallback_summary),
+            data.get("kr_forecast", fallback_forecast),
+            data.get("comments", fallback_comments),
+        )
+    except Exception:
+        pass
+    return fallback_summary, fallback_forecast, fallback_comments
+
 def fetch_naver_news(query, display=3):
     naver_id = os.environ.get("NAVER_CLIENT_ID")
     naver_secret = os.environ.get("NAVER_CLIENT_SECRET")
@@ -250,10 +312,9 @@ def index():
         other["이더리움"]["krw_price"] = round(other["이더리움"]["price"] * krw_rate, 0)
     custom = load_custom()
     custom_data = fetch(custom) if custom else {}
-    summary = _rule_based_summary(indices, commodities, kr_stocks)
-    kr_forecast = ""
+    summary, kr_forecast, stock_comments = ai_analysis(indices, commodities, kr_stocks)
     for name in kr_stocks:
-        kr_stocks[name]["comment"] = ""
+        kr_stocks[name]["comment"] = stock_comments.get(name, "")
     updated = datetime.now().strftime("%Y-%m-%d %H:%M")
     return render(indices, commodities, semis, kr_stocks, other, updated, summary, kr_forecast, custom_data)
 
