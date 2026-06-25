@@ -290,13 +290,15 @@ def render(indices, commodities, semis, kr_stocks, updated, summary="", custom_d
   .refresh {{ margin-top: 32px; text-align: center; }}
   .refresh a {{ color: #3b82f6; text-decoration: none; font-size: 0.9rem; }}
   .refresh a:hover {{ text-decoration: underline; }}
+  .row-wrap {{ display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }}
+  .row-wrap .section {{ flex: 1; min-width: 280px; margin-bottom: 36px; }}
 </style>
 </head>
 <body>
 <h1>📈 증시 대시보드</h1>
 <div class="subtitle">전일 종가 기준 · 마지막 업데이트: {updated}</div>
 <div class="ai-summary"><span class="ai-icon">🤖</span><span>{summary}</span></div>
-{s1}{s2}{s_semi}{s3}
+<div class="row-wrap">{s1}{s2}</div>{s_semi}{s3}
 <div class="section">
 <h2>⭐ 내 종목 추가</h2>
 <form class="add-form" method="post" action="/stocks/add">
