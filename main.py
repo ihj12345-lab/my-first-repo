@@ -62,6 +62,7 @@ KR_STOCKS = {
 DEFAULT_CUSTOM = {}
 
 OTHER = {
+    "스페이스X": "SPCX",
     "롯데칠성": "005300",
     "이더리움": "ETH-USD",
 }
