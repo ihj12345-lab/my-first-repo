@@ -210,6 +210,33 @@ def fetch_kr(ticker_map):
             results[name] = {"price": "-", "change": 0, "pct": 0, "closes": [], "post_price": None, "post_pct": None}
     return results
 
+def fetch_postmarket(symbol):
+    """정규장 마감 이후(프리/애프터) 마지막 거래가와 등락률을 반환. 정규장 중이면 None."""
+    try:
+        import httpx
+        resp = httpx.get(
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
+            params={"includePrePost": "true", "interval": "5m", "range": "1d"},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=8,
+        )
+        r = resp.json()["chart"]["result"][0]
+        meta = r["meta"]
+        reg = meta.get("regularMarketPrice")
+        reg_time = meta.get("regularMarketTime")
+        ts = r.get("timestamp", [])
+        closes = r["indicators"]["quote"][0]["close"]
+        last_price = None
+        for t, c in zip(ts, closes):
+            if c is not None and reg_time and t > reg_time:
+                last_price = c
+        if last_price and reg:
+            pct = (last_price - reg) / reg * 100
+            return round(float(last_price), 2), round(pct, 2)
+    except Exception:
+        pass
+    return None, None
+
 def fetch(ticker_map):
     results = {}
     for name, symbol in ticker_map.items():
@@ -243,6 +270,12 @@ def index():
     indices = fetch(INDICES)
     commodities = fetch(COMMODITIES)
     semis = fetch(SEMIS)
+    for name, symbol in SEMIS.items():
+        if name in semis and isinstance(semis[name]["price"], (int, float)):
+            pp, ppct = fetch_postmarket(symbol)
+            if pp:
+                semis[name]["post_price"] = pp
+                semis[name]["post_pct"] = ppct
     kr_stocks = fetch_kr(KR_STOCKS)
     other = fetch_mixed(OTHER)
     krw_rate = commodities.get("달러/원 환율", {}).get("price")
@@ -310,9 +343,9 @@ def card(name, data, removable=False):
     post_price = data.get("post_price")
     post_pct = data.get("post_pct")
     if post_price:
-        pc = "#22c55e" if post_pct and post_pct > 0 else "#ef4444" if post_pct and post_pct < 0 else "#888"
-        pa = "▲" if post_pct and post_pct > 0 else "▼" if post_pct and post_pct < 0 else "─"
-        post_html = f'<div class="card-after">시간외 {post_price:,.2f} <span style="color:{pc}">{pa}{abs(post_pct):.2f}%</span></div>'
+        pc = color(post_pct)
+        pa = arrow(post_pct)
+        post_html = f'<div class="card-post">🌙 시간외 <b>${post_price:,.2f}</b> <span style="color:{pc}">{pa}{abs(post_pct):.2f}%</span></div>'
     return f"""
     <div class="card">
         <div class="card-header"><div class="card-name">{name}</div>{remove_btn}</div>
@@ -352,6 +385,7 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", k
   .card-price {{ font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }}
   .card-change {{ font-size: 0.88rem; font-weight: 500; }}
   .card-after {{ font-size: 0.78rem; color: #94a3b8; margin-top: 4px; }}
+  .card-post {{ font-size: 0.8rem; color: #cbd5e1; margin-top: 6px; background: #0f172a; border-radius: 6px; padding: 4px 8px; display: inline-block; }}
   .ai-summary {{ background: #1e3a5f; border: 1px solid #2d6a9f; border-radius: 10px; padding: 16px 20px; margin-bottom: 10px; font-size: 1.05rem; font-weight: 500; color: #bfdbfe; display: flex; align-items: center; gap: 12px; line-height: 1.5; }}
   .ai-summary .ai-icon {{ font-size: 1.3rem; flex-shrink: 0; }}
   .ai-forecast {{ background: #1a2e1a; border: 1px solid #2d6a3a; border-radius: 10px; padding: 16px 20px; margin-bottom: 8px; font-size: 1.05rem; font-weight: 500; color: #86efac; display: flex; align-items: center; gap: 12px; line-height: 1.5; }}
