@@ -47,6 +47,17 @@ COMMODITIES = {
     "금": "GC=F",
 }
 
+SEMIS = {
+    "엔비디아": "NVDA",
+    "TSMC": "TSM",
+    "브로드컴": "AVGO",
+    "마이크론": "MU",
+    "AMD": "AMD",
+    "인텔": "INTC",
+    "퀄컴": "QCOM",
+    "ASML": "ASML",
+}
+
 KR_STOCKS = {
     "삼성전자": "005930",
     "SK하이닉스": "000660",
@@ -58,9 +69,7 @@ KR_STOCKS = {
     "기아": "000270",
 }
 
-DEFAULT_CUSTOM = {
-    "마이크론": "MU",
-}
+DEFAULT_CUSTOM = {}
 
 def ai_summary(indices, commodities, kr_stocks):
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -169,12 +178,13 @@ def fetch(ticker_map):
 def index():
     indices = fetch(INDICES)
     commodities = fetch(COMMODITIES)
+    semis = fetch(SEMIS)
     kr_stocks = fetch_kr(KR_STOCKS)
     custom = load_custom()
     custom_data = fetch(custom) if custom else {}
     summary = ai_summary(indices, commodities, kr_stocks)
     updated = datetime.now().strftime("%Y-%m-%d %H:%M")
-    return render(indices, commodities, kr_stocks, updated, summary, custom_data)
+    return render(indices, commodities, semis, kr_stocks, updated, summary, custom_data)
 
 def color(pct):
     if isinstance(pct, str):
@@ -242,9 +252,10 @@ def section(title, data, removable=False):
     cards = "".join(card(n, d, removable) for n, d in data.items())
     return f'<div class="section"><h2>{title}</h2><div class="grid">{cards}</div></div>'
 
-def render(indices, commodities, kr_stocks, updated, summary="", custom_data=None):
+def render(indices, commodities, semis, kr_stocks, updated, summary="", custom_data=None):
     s1 = section("🇺🇸 미국 주요 지수", indices)
     s2 = section("📊 주요 경제지표", commodities)
+    s_semi = section("💾 미국 반도체 주요 종목", semis)
     s3 = section("🇰🇷 한국 대표 종목", kr_stocks)
     s4 = section("⭐ 내 종목", custom_data, removable=True) if custom_data else ""
     return f"""<!DOCTYPE html>
@@ -285,7 +296,7 @@ def render(indices, commodities, kr_stocks, updated, summary="", custom_data=Non
 <h1>📈 증시 대시보드</h1>
 <div class="subtitle">전일 종가 기준 · 마지막 업데이트: {updated}</div>
 <div class="ai-summary"><span class="ai-icon">🤖</span><span>{summary}</span></div>
-{s1}{s2}{s3}
+{s1}{s2}{s_semi}{s3}
 <div class="section">
 <h2>⭐ 내 종목 추가</h2>
 <form class="add-form" method="post" action="/stocks/add">
