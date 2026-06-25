@@ -351,6 +351,7 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", k
   .ai-forecast {{ background: #1a2e1a; border: 1px solid #2d6a3a; border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; font-size: 1.05rem; font-weight: 500; color: #86efac; display: flex; align-items: center; gap: 12px; line-height: 1.5; }}
   .ai-forecast .ai-icon {{ font-size: 1.3rem; flex-shrink: 0; }}
   .card-comment {{ font-size: 0.75rem; color: #94a3b8; margin-top: 6px; line-height: 1.4; }}
+  .ai-label {{ font-weight: 700; margin-right: 4px; opacity: 0.85; }}
   .card-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }}
   .card-name {{ font-size: 1rem; font-weight: 600; color: #e2e8f0; }}
   .rm-btn {{ background: none; border: none; color: #64748b; cursor: pointer; font-size: 0.75rem; padding: 0; line-height: 1; }}
@@ -370,8 +371,8 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", k
 <body>
 <h1>📈 증시 대시보드</h1>
 <div class="subtitle">전일 종가 기준 · 마지막 업데이트: {updated}</div>
-<div class="ai-summary"><span class="ai-icon">📊</span><span>{summary}</span></div>
-{"" if not kr_forecast else f'<div class="ai-forecast"><span class="ai-icon">📈</span><span>{kr_forecast}</span></div>'}
+<div class="ai-summary"><span class="ai-icon">📊</span><span><b class="ai-label">[AI 오늘 분석]</b> {summary}</span></div>
+{"" if not kr_forecast else f'<div class="ai-forecast"><span class="ai-icon">📈</span><span><b class="ai-label">[AI 내일 전망]</b> {kr_forecast}</span></div>'}
 <div class="row-wrap">{s1}{s2}</div>{s_semi}<div class="row-wrap">{s3}{s_other}</div>
 <div class="section">
 <h2>⭐ 내 종목 추가</h2>
