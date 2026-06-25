@@ -117,7 +117,11 @@ def ai_analysis(indices, commodities, kr_stocks):
   }}
 }}
 
-중요: 모든 코멘트는 반드시 30자 이상으로 작성하세요. 하락 종목도 '하락 마감' 같은 단순 표현 대신 하락 원인이나 배경을 추정해서 구체적으로 서술하세요. 예: "현대차" -> "차익실현 매물 출회로 약세, 환율 부담 지속".
+중요 규칙:
+1. 모든 코멘트는 반드시 30자 이상으로 작성하세요.
+2. 하락 종목도 '하락 마감' 같은 단순 표현 대신 하락 원인이나 배경을 추정해서 구체적으로 서술하세요. 예: "현대차" -> "차익실현 매물 출회로 약세, 환율 부담 지속".
+3. 확인되지 않은 사실을 단정하지 마세요. 추측이나 시장 기대는 '~가능성'이 아니라 '~기대감', '~관측' 같은 표현을 쓰세요.
+4. 뉴스에 명확히 나오지 않은 내용을 사실처럼 단정하지 마세요. 한 종목의 뉴스를 다른 종목에 잘못 적용하지 마세요.
 
 [시장 데이터]
 {chr(10).join(lines)}
@@ -350,7 +354,8 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", k
   .card-after {{ font-size: 0.78rem; color: #94a3b8; margin-top: 4px; }}
   .ai-summary {{ background: #1e3a5f; border: 1px solid #2d6a9f; border-radius: 10px; padding: 16px 20px; margin-bottom: 10px; font-size: 1.05rem; font-weight: 500; color: #bfdbfe; display: flex; align-items: center; gap: 12px; line-height: 1.5; }}
   .ai-summary .ai-icon {{ font-size: 1.3rem; flex-shrink: 0; }}
-  .ai-forecast {{ background: #1a2e1a; border: 1px solid #2d6a3a; border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; font-size: 1.05rem; font-weight: 500; color: #86efac; display: flex; align-items: center; gap: 12px; line-height: 1.5; }}
+  .ai-forecast {{ background: #1a2e1a; border: 1px solid #2d6a3a; border-radius: 10px; padding: 16px 20px; margin-bottom: 8px; font-size: 1.05rem; font-weight: 500; color: #86efac; display: flex; align-items: center; gap: 12px; line-height: 1.5; }}
+  .ai-disclaimer {{ font-size: 0.75rem; color: #64748b; margin-bottom: 28px; padding-left: 4px; }}
   .ai-forecast .ai-icon {{ font-size: 1.3rem; flex-shrink: 0; }}
   .card-comment {{ font-size: 0.82rem; color: #cbd5e1; margin-top: 10px; padding-top: 10px; border-top: 1px solid #334155; line-height: 1.5; }}
   .ai-label {{ font-weight: 700; margin-right: 4px; opacity: 0.85; }}
@@ -375,6 +380,7 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", k
 <div class="subtitle">전일 종가 기준 · 마지막 업데이트: {updated}</div>
 <div class="ai-summary"><span class="ai-icon">📊</span><span><b class="ai-label">[AI 오늘 분석]</b> {summary}</span></div>
 {"" if not kr_forecast else f'<div class="ai-forecast"><span class="ai-icon">📈</span><span><b class="ai-label">[AI 내일 전망]</b> {kr_forecast}</span></div>'}
+<div class="ai-disclaimer">⚠️ AI가 생성한 참고용 정보입니다. 투자 판단의 근거로 삼지 마세요.</div>
 <div class="row-wrap">{s1}{s2}</div>{s_semi}<div class="row-wrap">{s3}{s_other}</div>
 <div class="section">
 <h2>⭐ 내 종목 추가</h2>
