@@ -179,7 +179,7 @@ def index():
 def color(pct):
     if isinstance(pct, str):
         return "#888"
-    return "#ef4444" if pct < 0 else "#22c55e" if pct > 0 else "#888"
+    return "#3b82f6" if pct < 0 else "#ef4444" if pct > 0 else "#888"
 
 def arrow(pct):
     if isinstance(pct, str):
