@@ -118,8 +118,8 @@ def fetch_kr(ticker_map):
                 change = last - prev
                 pct = (change / prev) * 100
                 results[name] = {
-                    "price": round(last, 0),
-                    "change": round(change, 0),
+                    "price": float(round(last, 0)),
+                    "change": float(round(change, 0)),
                     "pct": round(pct, 2),
                     "closes": closes,
                     "post_price": None,
@@ -153,13 +153,14 @@ def fetch(ticker_map):
                     "post_pct": None,
                 }
                 try:
-                    info = t.info
-                    market_state = info.get("marketState", "")
+                    info = t.get_info(proxy=None)
                     post_price = info.get("postMarketPrice")
-                    post_pct = info.get("postMarketChangePercent")
-                    if post_price and market_state in ("POST", "PREPRE", "PRE"):
+                    reg_price = info.get("regularMarketPrice")
+                    market_state = info.get("marketState", "")
+                    if post_price and reg_price and market_state in ("POST", "PREPRE", "PRE"):
+                        post_chg_pct = (post_price - reg_price) / reg_price * 100
                         data["post_price"] = round(post_price, 2)
-                        data["post_pct"] = round(post_pct, 2) if post_pct else None
+                        data["post_pct"] = round(post_chg_pct, 2)
                 except Exception:
                     pass
                 results[name] = data
@@ -201,7 +202,7 @@ def fmt_price(name, price):
     if name == "금":
         return f"${price:,.2f}"
     if name in KR_CODES:
-        return f"{int(price):,} 원"
+        return f"{int(price):,} 원" if isinstance(price, (int, float)) else "-"
     return f"{price:,.2f}"
 
 def sparkline(closes, line_color):
