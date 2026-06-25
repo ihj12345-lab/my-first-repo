@@ -105,15 +105,15 @@ def ai_analysis(indices, commodities, kr_stocks):
                 news_sections.append(f"[{stock_name} 최신 뉴스]\n" + "\n".join(snippets))
         news_str = "\n\n".join(news_sections) if news_sections else ""
 
-        prompt = f"""아래 시장 데이터{"와 최신 뉴스" if news_str else ""}를 보고 JSON 형식으로만 답하세요. 설명 없이 JSON만 출력하세요.
+        prompt = f"""당신은 한국 주식 전문 애널리스트입니다. 아래 시장 데이터{"와 최신 뉴스" if news_str else ""}를 분석하고 JSON 형식으로만 답하세요. 설명 없이 JSON만 출력하세요.
 
 {{
-  "market_summary": "오늘 시장 상황 한 문장 요약 (50자 이내)",
-  "kr_forecast": "삼성전자·SK하이닉스·현대차 내일 투자 전망 한 문장 (60자 이내)",
+  "market_summary": "오늘 글로벌 시장 핵심 흐름을 2~3개 키워드 중심으로 요약 (70자 이내, 예: 나스닥 반등·달러 강세 속 반도체 수혜 기대)",
+  "kr_forecast": "삼성전자·SK하이닉스·현대차의 내일 투자 전망을 근거와 함께 서술 (80자 이내, 단순 '상승/하락' 외에 이유 포함)",
   "comments": {{
-    "삼성전자": "한 줄 코멘트 (30자 이내)",
-    "SK하이닉스": "한 줄 코멘트 (30자 이내)",
-    "현대차": "한 줄 코멘트 (30자 이내)"
+    "삼성전자": "오늘 주가 흐름과 주목할 포인트를 구체적으로 (40자 이내)",
+    "SK하이닉스": "오늘 주가 흐름과 주목할 포인트를 구체적으로 (40자 이내)",
+    "현대차": "오늘 주가 흐름과 주목할 포인트를 구체적으로 (40자 이내)"
   }}
 }}
 
