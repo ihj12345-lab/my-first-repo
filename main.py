@@ -284,8 +284,8 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", c
   .subtitle {{ color: #94a3b8; font-size: 0.85rem; margin-bottom: 32px; }}
   .section {{ margin-bottom: 36px; }}
   .section h2 {{ font-size: 1.1rem; color: #94a3b8; margin-bottom: 14px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }}
-  .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }}
-  .card {{ background: #1e293b; border-radius: 12px; padding: 18px; height: 160px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; }}
+  .grid {{ display: flex; flex-wrap: wrap; gap: 14px; }}
+  .card {{ background: #1e293b; border-radius: 12px; padding: 18px; width: 210px; height: 160px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; flex-shrink: 0; }}
   .card-price {{ font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }}
   .card-change {{ font-size: 0.88rem; font-weight: 500; }}
   .card-after {{ font-size: 0.78rem; color: #94a3b8; margin-top: 4px; }}
