@@ -250,9 +250,10 @@ def index():
         other["이더리움"]["krw_price"] = round(other["이더리움"]["price"] * krw_rate, 0)
     custom = load_custom()
     custom_data = fetch(custom) if custom else {}
-    summary, kr_forecast, stock_comments = ai_analysis(indices, commodities, kr_stocks)
+    summary = _rule_based_summary(indices, commodities, kr_stocks)
+    kr_forecast = ""
     for name in kr_stocks:
-        kr_stocks[name]["comment"] = stock_comments.get(name, "")
+        kr_stocks[name]["comment"] = ""
     updated = datetime.now().strftime("%Y-%m-%d %H:%M")
     return render(indices, commodities, semis, kr_stocks, other, updated, summary, kr_forecast, custom_data)
 
@@ -376,8 +377,8 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", k
 <body>
 <h1>📈 증시 대시보드</h1>
 <div class="subtitle">전일 종가 기준 · 마지막 업데이트: {updated}</div>
-<div class="ai-summary"><span class="ai-icon">🤖</span><span>{summary}</span></div>
-<div class="ai-forecast"><span class="ai-icon">📈</span><span>{kr_forecast}</span></div>
+<div class="ai-summary"><span class="ai-icon">📊</span><span>{summary}</span></div>
+{"" if not kr_forecast else f'<div class="ai-forecast"><span class="ai-icon">📈</span><span>{kr_forecast}</span></div>'}
 <div class="row-wrap">{s1}{s2}</div>{s_semi}<div class="row-wrap">{s3}{s_other}</div>
 <div class="section">
 <h2>⭐ 내 종목 추가</h2>
