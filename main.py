@@ -158,14 +158,17 @@ def fetch(ticker_map):
                     "post_pct": None,
                 }
                 try:
-                    info = t.get_info(proxy=None)
-                    post_price = info.get("postMarketPrice")
-                    reg_price = info.get("regularMarketPrice")
-                    market_state = info.get("marketState", "")
-                    if post_price and reg_price and market_state in ("POST", "PREPRE", "PRE"):
-                        post_chg_pct = (post_price - reg_price) / reg_price * 100
-                        data["post_price"] = round(post_price, 2)
-                        data["post_pct"] = round(post_chg_pct, 2)
+                    df_post = yf.download(symbol, period="1d", interval="1m", prepost=True, progress=False)
+                    if not df_post.empty:
+                        post_price = float(df_post["Close"].iloc[-1].item())
+                        reg_close = round(last, 2)
+                        last_dt = df_post.index[-1]
+                        import pandas as pd
+                        reg_end = pd.Timestamp("16:00", tz=last_dt.tz) if hasattr(last_dt, "tz") else None
+                        if post_price and post_price != reg_close and abs(post_price - reg_close) / reg_close > 0.001:
+                            post_chg_pct = (post_price - reg_close) / reg_close * 100
+                            data["post_price"] = round(post_price, 2)
+                            data["post_pct"] = round(post_chg_pct, 2)
                 except Exception:
                     pass
                 results[name] = data
