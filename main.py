@@ -77,6 +77,24 @@ def fetch_mixed(ticker_map):
         results.update(fetch(us_map))
     return {n: results[n] for n in ticker_map if n in results}
 
+def fetch_naver_news(query, display=3):
+    naver_id = os.environ.get("NAVER_CLIENT_ID")
+    naver_secret = os.environ.get("NAVER_CLIENT_SECRET")
+    if not naver_id or not naver_secret:
+        return []
+    try:
+        import httpx
+        resp = httpx.get(
+            "https://openapi.naver.com/v1/search/news.json",
+            params={"query": query, "display": display, "sort": "date"},
+            headers={"X-Naver-Client-Id": naver_id, "X-Naver-Client-Secret": naver_secret},
+            timeout=5,
+        )
+        items = resp.json().get("items", [])
+        return [item["description"] for item in items]
+    except Exception:
+        return []
+
 def ai_analysis(indices, commodities, kr_stocks):
     """Returns (market_summary, kr_forecast, stock_comments_dict)"""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -99,26 +117,37 @@ def ai_analysis(indices, commodities, kr_stocks):
             if isinstance(d["price"], (int, float)):
                 lines.append(f"{name}: {int(d['price']):,}원 ({d['pct']:+.2f}%)")
         data_str = "\n".join(lines)
+
+        news_sections = []
+        for stock_name, query in [("삼성전자", "삼성전자 주가"), ("SK하이닉스", "SK하이닉스 주가"), ("현대차", "현대차 주가")]:
+            snippets = fetch_naver_news(query)
+            if snippets:
+                news_sections.append(f"[{stock_name} 최신 뉴스]\n" + "\n".join(snippets))
+        news_str = "\n\n".join(news_sections) if news_sections else "뉴스 없음"
+
         msg = client.messages.create(
             model="claude-opus-4-8",
             max_tokens=600,
             thinking={"type": "adaptive"},
             messages=[{
                 "role": "user",
-                "content": f"""아래 시장 데이터를 보고 JSON 형식으로만 답하세요. 설명 없이 JSON만 출력하세요.
+                "content": f"""아래 시장 데이터와 최신 뉴스를 보고 JSON 형식으로만 답하세요. 설명 없이 JSON만 출력하세요.
 
 {{
   "market_summary": "오늘 시장 상황 한 문장 요약 (50자 이내)",
   "kr_forecast": "삼성전자·SK하이닉스·현대차 내일 투자 전망 한 문장 (60자 이내)",
   "comments": {{
-    "삼성전자": "한 줄 코멘트 (30자 이내)",
-    "SK하이닉스": "한 줄 코멘트 (30자 이내)",
-    "현대차": "한 줄 코멘트 (30자 이내)"
+    "삼성전자": "뉴스 기반 한 줄 코멘트 (30자 이내)",
+    "SK하이닉스": "뉴스 기반 한 줄 코멘트 (30자 이내)",
+    "현대차": "뉴스 기반 한 줄 코멘트 (30자 이내)"
   }}
 }}
 
-데이터:
-{data_str}"""
+[시장 데이터]
+{data_str}
+
+[최신 뉴스]
+{news_str}"""
             }]
         )
         for block in msg.content:
