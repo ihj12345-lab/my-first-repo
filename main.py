@@ -372,12 +372,15 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", k
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>증시 대시보드</title>
+<title>MarketPulse · 증시 대시보드</title>
 <style>
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{ background: #0f172a; color: #f1f5f9; font-family: 'Segoe UI', sans-serif; padding: 24px; }}
-  h1 {{ font-size: 1.6rem; margin-bottom: 4px; }}
-  .subtitle {{ color: #94a3b8; font-size: 0.85rem; margin-bottom: 32px; }}
+  h1 {{ font-size: 1.9rem; margin-bottom: 10px; letter-spacing: -0.5px; background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; display: inline-block; }}
+  .brand-sub {{ font-size: 1rem; font-weight: 500; color: #64748b; -webkit-text-fill-color: #64748b; margin-left: 6px; }}
+  .subtitle {{ font-size: 0.9rem; margin-bottom: 28px; display: flex; align-items: center; gap: 10px; }}
+  .sub-badge {{ background: #1e293b; color: #cbd5e1; font-weight: 600; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; }}
+  .sub-time {{ color: #cbd5e1; font-weight: 500; }}
   .section {{ margin-bottom: 36px; }}
   .section h2 {{ font-size: 1.1rem; color: #94a3b8; margin-bottom: 14px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }}
   .grid {{ display: flex; flex-wrap: wrap; gap: 14px; }}
@@ -410,8 +413,8 @@ def render(indices, commodities, semis, kr_stocks, other, updated, summary="", k
 </style>
 </head>
 <body>
-<h1>📈 증시 대시보드</h1>
-<div class="subtitle">전일 종가 기준 · 마지막 업데이트: {updated}</div>
+<h1>📈 MarketPulse <span class="brand-sub">증시 대시보드</span></h1>
+<div class="subtitle"><span class="sub-badge">전일 종가 기준</span> <span class="sub-time">🕐 마지막 업데이트 {updated}</span></div>
 <div class="ai-summary"><span class="ai-icon">📊</span><span><b class="ai-label">[AI 오늘 분석]</b> {summary}</span></div>
 {"" if not kr_forecast else f'<div class="ai-forecast"><span class="ai-icon">📈</span><span><b class="ai-label">[AI 내일 전망]</b> {kr_forecast}</span></div>'}
 <div class="ai-disclaimer">⚠️ AI가 생성한 참고용 정보입니다. 투자 판단의 근거로 삼지 마세요.</div>
